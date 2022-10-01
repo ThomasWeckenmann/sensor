@@ -15,7 +15,6 @@ black==22.8.0
 bleach==5.0.1
 blinker==1.5
 cachetools==5.2.0
-certifi @ file:///private/var/folders/sy/f16zz6x50xz3113nwtb9bvq00000gp/T/abs_05nm_gqf36/croots/recipe/certifi_1663615689491/work/certifi
 chardet==5.0.0
 charset-normalizer==2.1.1
 click==8.1.3
