@@ -6,58 +6,106 @@ from datetime import datetime, timedelta
 from dateutil.parser import parse
 import altair as alt
 from dateutil.relativedelta import *
+from geopy.geocoders import Nominatim
 
-combo_ids = st.selectbox(
-    'Select a Box ID:',
-    ("5e92b3e9df8258001bdfc8eb", "5c377effc4c2f3001942a946", "5d9ef41e25683a001ad916c3")
-)
+box_ids = ["5e92b3e9df8258001bdfc8eb", "5c377effc4c2f3001942a946", "5d9ef41e25683a001ad916c3"]
+
+class Box():
+    def __init__(self, box_id):
+        self.id = box_id
+        self.box_data = None
+        self.location = None
+        self.address_string = ""
+        self.df = pd.DataFrame()
+
+        self._set_box_data()
+        self._set_address()
+
+    def _set_box_data(self):
+        osm_url = f"https://api.opensensemap.org/boxes/{self.id}"
+        self.box_data = requests.get(osm_url).json()
+
+    def _set_address(self):
+        long = str(self.box_data["currentLocation"]["coordinates"][0])
+        lat = str(self.box_data["currentLocation"]["coordinates"][1])
+        geolocator = Nominatim(user_agent="geoapiExercises")
+        self.location = geolocator.reverse(lat+","+long)
+        address = self.location.raw['address']
+        suburb = address.get('suburb', '')
+        if 'city' in address.keys():
+            city = address.get('city', '')
+        else:
+            city = address.get('town', '')
+        self.address_string = f" ({city} {suburb})"
+
+    def get_sensor_data1000(self, sensor_id):
+        sensor_dict = {"box_id": self.id, "sensor_id": sensor_id}
+        osm_url1000 = "https://api.opensensemap.org/boxes/{box_id}/data/{sensor_id}?&download=true&format=json"
+        url = osm_url1000.format(**sensor_dict)
+        return requests.get(url).json()
+
+    def add_past_sensor_measurements(self, sensor):
+        values, dates = [], []
+        for sensor_data in self.get_sensor_data1000(sensor["_id"]):
+            values.append(float(sensor_data["value"]))
+            dates.append(parse(sensor_data["createdAt"]) + timedelta(hours=2))
+        try:
+            if "date" not in self.df:
+                self.df["date"] = dates
+            self.df[sensor["title"].replace(".", "")] = values
+        except:
+            pass
+
+
+def user_box_id_selection():
+    box_id_dict = {}
+    for box_id in box_ids:
+        box = Box(box_id)
+        combo_key = box.box_data["name"] + box.address_string
+        box_id_dict[combo_key] = box_id
+    combo_id_combo = st.selectbox('Select a Box:',(box_id_dict))
+    box_manual_input = st.text_input("Or paste a Box ID:", "")
+    if box_manual_input:
+        box_id = box_manual_input
+    else:
+        box_id = box_id_dict[combo_id_combo]
+    return box_id
+
+
+def show_high_pm_values(box):
+    high_value = st.slider('Show PM Values over (last 1000 measurements)', 10, 100, 40)
+    df_high_10 = box.df[box.df["PM10"] > high_value]
+    df_high_25 = box.df[box.df["PM25"] > high_value]
+    merged_df_high = pd.concat([df_high_10, df_high_25], ignore_index = True, sort = False)
+    merged_df_high['date'] = merged_df_high["date"].dt.strftime("%Y-%m-%d %H:%M:%S")
+    st.write("PM Values over ", high_value, "(last 1000 measurements)", merged_df_high)
     
-box_manual_input = st.text_input("Or paste a Box ID:", "")
-if box_manual_input:
-    box_id = box_manual_input
-else:
-    box_id = combo_ids
+
+def show_pm_graphs(box):
+    pm10 = alt.Chart(box.df).mark_line().encode(x='date',y='PM10')
+    pm025 = alt.Chart(box.df).mark_line().encode(x='date',y='PM25')
+    st.write("PM10 (last 1000 measurements)")
+    st.altair_chart(pm10)
+    st.write("PM2.5 (last 1000 measurements)")
+    st.altair_chart(pm025)
 
 
-osm_url = f"https://api.opensensemap.org/boxes/{box_id}"
-osm_url1000 = "https://api.opensensemap.org/boxes/{box_id}/data/{sensor_id}?&download=true&format=json"
+def run(box_id):
+    box = Box(box_id)
+    sensors = box.box_data["sensors"]
+    sensor_date = parse(sensors[0]["lastMeasurement"]["createdAt"]) + timedelta(hours=2)
+    st.header(f"{box.box_data['name']} {box.address_string}")
 
+    for sensor in sensors:
+        st.write(sensor["lastMeasurement"]["value"], sensor["unit"], sensor["title"])
+        if "PM" in sensor["title"]:
+            box.add_past_sensor_measurements(sensor)
+            
+    st.write("Measurement from: ", sensor_date.strftime('%H:%M:%S %y-%m-%d'), "")
+    show_high_pm_values(box)
+    show_pm_graphs(box)
+    
 
-rohr_data_osm = requests.get(osm_url).json()
-sensors = rohr_data_osm["sensors"]
-sensor_date = parse(sensors[0]["lastMeasurement"]["createdAt"]) + timedelta(hours=2)
-df = pd.DataFrame()
+if __name__ == "__main__":
+    run(user_box_id_selection())
 
-st.header(rohr_data_osm["name"])
-for sensor in sensors:
-    st.write(sensor["lastMeasurement"]["value"], sensor["unit"], sensor["title"])
-    url1000 = osm_url1000.format(**{"box_id": box_id, "sensor_id": sensor["_id"]})
-    sensor_data1000 = requests.get(url1000).json()
-    values = []
-    dates = []
-    for sensor_data in sensor_data1000:
-        value = float(sensor_data["value"])
-        values.append(value)
-        value_date = parse(sensor_data["createdAt"]) + timedelta(hours=2)
-        date = value_date #.strftime('%d.%m.%y %H:%M:%S')
-        dates.append(date)
-    try:
-        df[sensor["title"].replace(".", "")] = values
-        df["date"] = dates
-    except:
-        pass
-st.write("Measurement from: ", sensor_date.strftime('%H:%M:%S %y-%m-%d'), "")
-
-high_value = st.slider('Show PM Values over (last 1000 measurements)', 10, 100, 40)
-
-df_high_10 = df[df.PM10 > high_value]
-df_high_25 = df[df.PM25 > high_value]
-merged_df_high = pd.concat([df_high_10, df_high_25], ignore_index = True, sort = False)
-merged_df_high = merged_df_high[['date'] + [x for x in merged_df_high.columns if x != 'date']]
-merged_df_high['date'] = merged_df_high["date"].dt.strftime("%Y-%m-%d %H:%M:%S")
-
-st.write("PM Values over ", high_value, "(last 1000 measurements)", merged_df_high)
-pm10 = alt.Chart(df).mark_line().encode(x='date',y='PM10')
-pm025 = alt.Chart(df).mark_line().encode(x='date',y='PM25')
-st.altair_chart(pm10)
-st.altair_chart(pm025)
