@@ -20,7 +20,7 @@ df = pd.DataFrame()
 sensor_data1000 = "s"
 st.header(rohr_data_osm["name"])
 for sensor in sensors:
-    st.write(sensor["lastMeasurement"]["value"], sensor["unit"], sensor["title"], " (", sensor["_id"], ")")
+    st.write(sensor["lastMeasurement"]["value"], sensor["unit"], sensor["title"])
     url1000 = osm_url1000.format(**{"box_id": box_id, "sensor_id": sensor["_id"]})
     sensor_data1000 = requests.get(url1000).json()
     values = []
