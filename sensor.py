@@ -29,7 +29,7 @@ for sensor in sensors:
         value = float(sensor_data["value"])
         values.append(value)
         value_date = parse(sensor_data["createdAt"]) + timedelta(hours=2)
-        date = value_date.strftime('%d.%m.%y %H:%M:%S')
+        date = value_date #.strftime('%d.%m.%y %H:%M:%S')
         dates.append(date)
     try:
         df[sensor["title"].replace(".", "")] = values
@@ -44,9 +44,10 @@ df_high_10 = df[df.PM10 > high_value]
 df_high_25 = df[df.PM25 > high_value]
 merged_df_high = pd.concat([df_high_10, df_high_25], ignore_index = True, sort = False)
 merged_df_high = merged_df_high[['date'] + [x for x in merged_df_high.columns if x != 'date']]
+merged_df_high['date'] = merged_df_high["date"].dt.strftime("%Y-%m-%d %H:%M:%S")
 
 st.write("PM Values over ", high_value, merged_df_high)
-pm10 = alt.Chart(df.iloc[::10]).mark_line().encode(x='date',y='PM10')
-pm025 = alt.Chart(df.iloc[::10]).mark_line().encode(x='date',y='PM25')
+pm10 = alt.Chart(df).mark_line().encode(x='date',y='PM10')
+pm025 = alt.Chart(df).mark_line().encode(x='date',y='PM25')
 st.altair_chart(pm10)
 st.altair_chart(pm025)
