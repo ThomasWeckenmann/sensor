@@ -10,7 +10,7 @@ from geopy.geocoders import Nominatim
 
 box_ids = ["5e92b3e9df8258001bdfc8eb", "5c377effc4c2f3001942a946", "5d9ef41e25683a001ad916c3"]
 
-class Box():
+class Box(object):
     def __init__(self, box_id):
         self.id = box_id
         self.box_data = None
