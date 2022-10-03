@@ -7,8 +7,18 @@ from dateutil.parser import parse
 import altair as alt
 from dateutil.relativedelta import *
 
+combo_ids = st.selectbox(
+    'Select a Box ID:',
+    ("5e92b3e9df8258001bdfc8eb", "5c377effc4c2f3001942a946", "5d9ef41e25683a001ad916c3")
+)
+    
+box_manual_input = st.text_input("Or paste a Box ID:", "")
+if box_manual_input:
+    box_id = box_manual_input
+else:
+    box_id = combo_ids
 
-box_id = "5e92b3e9df8258001bdfc8eb"
+
 osm_url = f"https://api.opensensemap.org/boxes/{box_id}"
 osm_url1000 = "https://api.opensensemap.org/boxes/{box_id}/data/{sensor_id}?&download=true&format=json"
 
@@ -36,9 +46,9 @@ for sensor in sensors:
         df["date"] = dates
     except:
         pass
-st.write("gemessen um ", sensor_date.strftime('%H:%M:%S'), "Uhr")
+st.write("Measurement from: ", sensor_date.strftime('%H:%M:%S %y-%m-%d'), "")
 
-high_value = st.slider('Show PM Values over', 10, 100, 40)
+high_value = st.slider('Show PM Values over (last 1000 measurements)', 10, 100, 40)
 
 df_high_10 = df[df.PM10 > high_value]
 df_high_25 = df[df.PM25 > high_value]
@@ -46,7 +56,7 @@ merged_df_high = pd.concat([df_high_10, df_high_25], ignore_index = True, sort =
 merged_df_high = merged_df_high[['date'] + [x for x in merged_df_high.columns if x != 'date']]
 merged_df_high['date'] = merged_df_high["date"].dt.strftime("%Y-%m-%d %H:%M:%S")
 
-st.write("PM Values over ", high_value, merged_df_high)
+st.write("PM Values over ", high_value, "(last 1000 measurements)", merged_df_high)
 pm10 = alt.Chart(df).mark_line().encode(x='date',y='PM10')
 pm025 = alt.Chart(df).mark_line().encode(x='date',y='PM25')
 st.altair_chart(pm10)
