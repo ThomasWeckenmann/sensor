@@ -38,17 +38,15 @@ for sensor in sensors:
         pass
 st.write("gemessen um ", sensor_date.strftime('%H:%M:%S'), "Uhr")
 
-high_value = st.slider('Show Values over', 10, 100, 40)
+high_value = st.slider('Show PM Values over', 10, 100, 40)
 
 df_high_10 = df[df.PM10 > high_value]
 df_high_25 = df[df.PM25 > high_value]
 merged_df_high = pd.concat([df_high_10, df_high_25], ignore_index = True, sort = False)
 merged_df_high = merged_df_high[['date'] + [x for x in merged_df_high.columns if x != 'date']]
 
-st.write("Values over ", high_value, merged_df_high)
-
-st.header("Charts:")
-pm10 = alt.Chart(df).mark_line().encode(x='date',y='PM10')
-pm025 = alt.Chart(df).mark_line().encode(x='date',y='PM25')
+st.write("PM Values over ", high_value, merged_df_high)
+pm10 = alt.Chart(df.iloc[::10]).mark_line().encode(x='date',y='PM10')
+pm025 = alt.Chart(df.iloc[::10]).mark_line().encode(x='date',y='PM25')
 st.altair_chart(pm10)
 st.altair_chart(pm025)
