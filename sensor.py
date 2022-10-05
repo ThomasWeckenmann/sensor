@@ -86,7 +86,7 @@ def user_box_id_selection():
 
 
 def show_high_pm_values(box):
-    high_value = st.slider('Show PM Values over (last 1000 measurements)', 10, 100, 40)
+    high_value = st.sidebar.slider('Show PM Values over (last 1000 measurements)', 10, 100, 40)
     df_high_10 = box.df[box.df["PM10"] > high_value]
     df_high_25 = box.df[box.df["PM25"] > high_value]
     merged_df_high = pd.concat([df_high_10, df_high_25], ignore_index = True, sort = False)
