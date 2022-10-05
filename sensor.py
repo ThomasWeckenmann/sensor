@@ -1,11 +1,13 @@
-import numpy as np
-import requests
-import pandas as pd
-import streamlit as st
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 from dateutil.relativedelta import *
 from geopy.geocoders import Nominatim
+import numpy as np
+import pandas as pd
+import requests
+import streamlit as st
+from streamlit_folium import st_folium
+import folium
 
 box_ids = [
     "5e92b3e9df8258001bdfc8eb", 
@@ -21,8 +23,9 @@ class Box(object):
         self.box_data = None
         self.location = None
         self.address_string = ""
+        self.folium_map = None
         self.df = pd.DataFrame()
-
+        
         self._set_box_data()
         self._set_address()
 
@@ -33,6 +36,10 @@ class Box(object):
     def _set_address(self):
         long = str(self.box_data["currentLocation"]["coordinates"][0])
         lat = str(self.box_data["currentLocation"]["coordinates"][1])
+        
+        self.folium_map = folium.Map(location=[lat, long], zoom_start=16)
+        folium.Marker([lat, long], popup=self.box_data["name"], tooltip=self.box_data["name"]).add_to(self.folium_map)
+        
         geolocator = Nominatim(user_agent="geoapiExercises")
         self.location = geolocator.reverse(lat+","+long)
         address = self.location.raw['address']
@@ -105,6 +112,7 @@ def run(box_id):
     st.write("Measurement from: ", sensor_date.strftime('%H:%M:%S %y-%m-%d'), "")
     show_high_pm_values(box)
     show_pm_graphs(box)
+    st_data = st_folium(box.folium_map, width = 725)
     
 
 if __name__ == "__main__":
